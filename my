@@ -1,0 +1,151 @@
+#!/usr/bin/python
+
+###########################################################
+# import modules
+###########################################################
+import os
+import sys
+import click
+from tabulate import tabulate
+import configparser
+import io
+
+
+###########################################################
+# constants
+###########################################################
+platform = sys.platform
+home =os.environ['HOME']
+config_file_path = f"{home}/.config.ini"
+
+###########################################################
+# load config files
+###########################################################
+cfg = configparser.ConfigParser()
+cfg.read(config_file_path)
+
+
+###########################################################
+# Utils
+###########################################################
+# colorize string
+def cstr(param_string, param_code=0):
+    """
+        Add Colour to Text in Python
+        format : escape code style;color;background
+        example : \033[1;32;40m
+    """
+    # escape code begin 
+    eb="\033["
+    # end code 
+    ec="m"
+    # escape code end 
+    en="\033[0m"
+
+    # colors
+    color={
+        "black":"30", "red":"31",
+        "green":"32", "yellow":"33",
+        "blue":"34", "purple":"35",
+        "cyan":"36", "white":"37"
+    }
+    # background
+    background = {
+        "black":"40", "red":"41",
+        "green":"42", "yellow":"43",
+        "blue":"44", "purple":"45",
+        "cyan":"45", "white":"47"
+    }
+    # styles
+    style = {
+        "noeffect":"0", "bold":"1",
+        "underline":"2", "negative1":"3",
+        "negative2":"5"
+    }
+
+    # TODO : define more types 
+    # types
+    type={
+        0:"",
+        1:f"{eb}{style['bold']};{color['yellow']}{ec}",
+        -1:f"{eb}{style['bold']};{color['red']}{ec}"
+    }
+
+    return f"{type[param_code]}{param_string}{en}"
+
+
+# print reqursive lists 
+
+
+
+###########################################################
+# commands
+###########################################################
+# command
+@click.group()
+def my():
+    pass
+
+# TODO : refactor ls command 
+################# list files ################## 
+@my.command()
+@click.option('-a', '--all',is_flag=True, help="show hidden files")
+def ls(all):
+    l = os.listdir()
+    if not all : 
+        l = [i for i in l if not i.startswith('.')]
+    l.sort()
+    out = {cstr('name',1):l}
+    print(tabulate(out,
+        headers='keys',
+        tablefmt='fancy_grid'))
+    return
+
+
+# TODO : not possible to set shell working direcotry from anaother process 
+# TODO : find alternative ? 
+################# Navigation  ################## 
+@my.command()
+@click.argument('directory', nargs=1)
+def goto(directory):
+    if directory : 
+        file_path = cfg["directory_shortcuts"][directory]
+        os.chdir(file_path)
+    else : 
+        print(cstr( "no argument was given" ,-1))
+
+################# configuration ################## 
+@my.command()
+@click.option('-e', '--edit', is_flag=True)
+def config(edit):
+    if edit:
+        edit_configurationfile()
+
+
+def edit_configurationfile():
+    command =""
+    if platform == 'linux': 
+        command = f"{cfg['configuration']['editor']} {config_file_path}"
+    elif platform == 'windows' : 
+        command =f"notepad.exe {config_file_path}"
+    else : 
+        print("platform not supported")
+        return 
+    os.system(command)
+
+
+
+################ dev commands #######################
+@my.command()
+def dev():
+    os.system('code ~/.local/bin/my')
+
+
+
+
+###########################################################
+# entry point
+###########################################################
+if __name__ == '__main__' :
+    my()
+
